@@ -1,6 +1,7 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, typography } from '../theme/theme';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { colors } from '../theme/theme';
+import { styles } from './Loading.styles';
 
 interface LoadingProps {
   message?: string;
@@ -15,20 +16,3 @@ export function Loading({ message = 'Cargando...', fullScreen = true }: LoadingP
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-  fullScreen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  message: {
-    marginTop: spacing.sm,
-    color: colors.textSecondary,
-    ...typography.body,
-  },
-});

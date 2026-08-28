@@ -1,6 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, typography } from '../theme/theme';
+import { Text, View } from 'react-native';
+import { styles } from './EmptyState.styles';
 
 interface EmptyStateProps {
   icon?: string;
@@ -17,27 +17,3 @@ export function EmptyState({ icon = '📭', title, subtitle }: EmptyStateProps) 
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
-  },
-  icon: {
-    fontSize: 40,
-    marginBottom: spacing.sm,
-  },
-  title: {
-    ...typography.subtitle,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-});

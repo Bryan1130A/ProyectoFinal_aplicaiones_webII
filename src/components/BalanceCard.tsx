@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, shadow, spacing, typography } from '../theme/theme';
+import { Text, View } from 'react-native';
+import { colors, typography } from '../theme/theme';
+import { styles } from './BalanceCard.styles';
 
 interface BalanceCardProps {
   label: string;
@@ -38,26 +39,3 @@ export function BalanceCard({ label, amount, size = 'large', tone = 'primary' }:
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    ...shadow.card,
-  },
-  large: {
-    padding: spacing.lg,
-  },
-  small: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  label: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  labelOnPrimary: {
-    color: colors.primaryLight,
-  },
-});

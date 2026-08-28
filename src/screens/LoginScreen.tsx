@@ -4,7 +4,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -12,10 +11,10 @@ import {
 import { FormInput } from '../components/FormInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useAuth } from '../context/AuthContext';
-import { colors, spacing, typography } from '../theme/theme';
 import type { AuthStackParamList } from '../navigation/types';
 import { getErrorMessage } from '../utils/errorHandler';
 import { validateEmail, validatePassword } from '../utils/validators';
+import { styles } from './LoginScreen.styles';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -95,48 +94,3 @@ export function LoginScreen({ navigation }: Props) {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
-  container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: spacing.lg,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  logo: {
-    fontSize: 48,
-    marginBottom: spacing.sm,
-  },
-  title: {
-    ...typography.title,
-    color: colors.text,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  errorBanner: {
-    backgroundColor: colors.dangerLight,
-    borderRadius: spacing.sm,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  errorBannerText: {
-    ...typography.body,
-    color: colors.danger,
-  },
-  linkButton: {
-    marginTop: spacing.lg,
-    alignItems: 'center',
-  },
-  linkText: {
-    ...typography.body,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-});

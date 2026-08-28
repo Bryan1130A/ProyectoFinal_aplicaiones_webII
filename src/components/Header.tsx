@@ -1,6 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, spacing, typography } from '../theme/theme';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { styles } from './Header.styles';
 
 interface HeaderProps {
   title: string;
@@ -24,35 +24,3 @@ export function Header({ title, subtitle, rightLabel, onRightPress }: HeaderProp
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  texts: {
-    flexShrink: 1,
-  },
-  title: {
-    ...typography.title,
-    color: colors.text,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  rightButton: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-  },
-  rightLabel: {
-    ...typography.body,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-});

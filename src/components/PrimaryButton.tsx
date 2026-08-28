@@ -1,6 +1,7 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { colors, radius, spacing, typography } from '../theme/theme';
+import { ActivityIndicator, Text, TouchableOpacity } from 'react-native';
+import { colors } from '../theme/theme';
+import { styles } from './PrimaryButton.styles';
 
 interface PrimaryButtonProps {
   label: string;
@@ -32,31 +33,3 @@ export function PrimaryButton({ label, onPress, loading, disabled, variant = 'pr
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  danger: {
-    backgroundColor: colors.danger,
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-  label: {
-    ...typography.subtitle,
-    color: colors.white,
-  },
-  labelOutline: {
-    color: colors.primary,
-  },
-});

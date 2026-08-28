@@ -1,7 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BalanceCard } from '../components/BalanceCard';
 import { EmptyState } from '../components/EmptyState';
@@ -12,10 +12,11 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { useAuth } from '../context/AuthContext';
 import { movementService } from '../services/movementService';
 import { userService } from '../services/userService';
-import { colors, spacing, typography } from '../theme/theme';
+import { spacing } from '../theme/theme';
 import type { AppStackParamList } from '../navigation/types';
 import type { Movement } from '../types/Movement';
 import { getErrorMessage } from '../utils/errorHandler';
+import { styles } from './HomeScreen.styles';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
 
@@ -125,33 +126,3 @@ export function HomeScreen({ navigation }: Props) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  tilesRow: {
-    flexDirection: 'row',
-  },
-  sectionHeader: {
-    marginTop: spacing.sm,
-  },
-  sectionTitle: {
-    ...typography.subtitle,
-    color: colors.text,
-  },
-  errorBanner: {
-    backgroundColor: colors.dangerLight,
-    borderRadius: spacing.sm,
-    padding: spacing.md,
-  },
-  errorBannerText: {
-    ...typography.body,
-    color: colors.danger,
-  },
-});

@@ -1,11 +1,10 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { FormInput } from '../components/FormInput';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useAuth } from '../context/AuthContext';
 import { movementService } from '../services/movementService';
-import { colors, radius, spacing, typography } from '../theme/theme';
 import type { AppStackParamList } from '../navigation/types';
 import type { MovementType } from '../types/Movement';
 import { getErrorMessage } from '../utils/errorHandler';
@@ -15,6 +14,7 @@ import {
   validateMovementType,
   validateSufficientBalance,
 } from '../utils/validators';
+import { styles } from './CreateMovementScreen.styles';
 
 function formatMoney(amount: number): string {
   return `$${amount.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -119,79 +119,3 @@ export function CreateMovementScreen({ navigation }: Props) {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  balanceBanner: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.sm,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  balanceLabel: {
-    ...typography.caption,
-    color: colors.primaryDark,
-  },
-  balanceValue: {
-    ...typography.subtitle,
-    color: colors.primaryDark,
-    marginTop: 2,
-  },
-  label: {
-    ...typography.body,
-    color: colors.text,
-    marginBottom: spacing.xs,
-    fontWeight: '600',
-  },
-  typeRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  typeButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-  },
-  typeButtonDepositSelected: {
-    backgroundColor: colors.successLight,
-    borderColor: colors.success,
-  },
-  typeButtonWithdrawSelected: {
-    backgroundColor: colors.dangerLight,
-    borderColor: colors.danger,
-  },
-  typeButtonText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  typeButtonTextSelected: {
-    color: colors.text,
-  },
-  typeError: {
-    ...typography.caption,
-    color: colors.danger,
-    marginBottom: spacing.md,
-  },
-  errorBanner: {
-    backgroundColor: colors.dangerLight,
-    borderRadius: spacing.sm,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  errorBannerText: {
-    ...typography.body,
-    color: colors.danger,
-  },
-});

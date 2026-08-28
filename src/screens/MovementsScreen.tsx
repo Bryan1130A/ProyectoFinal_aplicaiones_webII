@@ -1,17 +1,17 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, RefreshControl, View } from 'react-native';
 import { EmptyState } from '../components/EmptyState';
 import { Loading } from '../components/Loading';
 import { MovementCard } from '../components/MovementCard';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useAuth } from '../context/AuthContext';
 import { movementService } from '../services/movementService';
-import { colors, spacing } from '../theme/theme';
 import type { AppStackParamList } from '../navigation/types';
 import type { Movement } from '../types/Movement';
 import { getErrorMessage } from '../utils/errorHandler';
+import { styles } from './MovementsScreen.styles';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Movements'>;
 
@@ -107,22 +107,3 @@ export function MovementsScreen({ navigation }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  listContent: {
-    padding: spacing.lg,
-    flexGrow: 1,
-  },
-  errorBanner: {
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  footer: {
-    padding: spacing.lg,
-    paddingTop: 0,
-  },
-});

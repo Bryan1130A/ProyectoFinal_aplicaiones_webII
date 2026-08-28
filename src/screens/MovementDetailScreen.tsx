@@ -1,15 +1,16 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { Loading } from '../components/Loading';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useAuth } from '../context/AuthContext';
 import { movementService } from '../services/movementService';
-import { colors, radius, shadow, spacing, typography } from '../theme/theme';
+import { colors, spacing } from '../theme/theme';
 import type { AppStackParamList } from '../navigation/types';
 import type { Movement } from '../types/Movement';
 import { getErrorMessage } from '../utils/errorHandler';
+import { styles } from './MovementDetailScreen.styles';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'MovementDetail'>;
 
@@ -117,45 +118,3 @@ export function MovementDetailScreen({ navigation, route }: Props) {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.lg,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    ...shadow.card,
-  },
-  type: {
-    ...typography.subtitle,
-    color: colors.textSecondary,
-  },
-  amount: {
-    ...typography.amount,
-    marginVertical: spacing.sm,
-  },
-  row: {
-    marginTop: spacing.md,
-  },
-  rowLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  rowValue: {
-    ...typography.body,
-    color: colors.text,
-    marginTop: 2,
-  },
-  errorText: {
-    ...typography.body,
-    color: colors.danger,
-    padding: spacing.lg,
-  },
-});

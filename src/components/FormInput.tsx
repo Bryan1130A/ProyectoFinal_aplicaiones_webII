@@ -1,6 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
-import { colors, radius, spacing, typography } from '../theme/theme';
+import { Text, TextInput, TextInputProps, View } from 'react-native';
+import { colors } from '../theme/theme';
+import { styles } from './FormInput.styles';
 
 interface FormInputProps extends TextInputProps {
   label: string;
@@ -20,33 +21,3 @@ export function FormInput({ label, error, style, ...inputProps }: FormInputProps
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    ...typography.body,
-    color: colors.text,
-    marginBottom: spacing.xs,
-    fontWeight: '600',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: 15,
-    color: colors.text,
-    backgroundColor: colors.surface,
-  },
-  inputError: {
-    borderColor: colors.danger,
-  },
-  error: {
-    ...typography.caption,
-    color: colors.danger,
-    marginTop: spacing.xs,
-  },
-});
