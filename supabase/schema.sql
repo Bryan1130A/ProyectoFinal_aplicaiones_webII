@@ -18,7 +18,10 @@
 -- rehashearlos antes de usar login_usuario (ver el bloque comentado al
 -- final de este archivo).
 
-create extension if not exists pgcrypto;
+-- En Supabase, pgcrypto normalmente ya vive en el schema "extensions"
+-- (no "public"), por eso las funciones que usan crypt()/gen_salt() abajo
+-- fijan search_path = public, extensions.
+create extension if not exists pgcrypto with schema extensions;
 
 alter table public.usuarios enable row level security;
 alter table public.movimientos enable row level security;
@@ -36,7 +39,7 @@ create or replace function public.registrar_usuario(
 returns table (id bigint, nombre text, email text, rol text, saldo double precision)
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_id bigint;
@@ -50,7 +53,7 @@ begin
   returning usuarios.id into v_id;
 
   return query
-    select u.id, u.nombre, u.email, u.rol, u.saldo
+    select u.id, u.nombre::text, u.email::text, u.rol::text, u.saldo
     from usuarios u
     where u.id = v_id;
 end;
@@ -66,11 +69,11 @@ create or replace function public.login_usuario(
 returns table (id bigint, nombre text, email text, rol text, saldo double precision)
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   return query
-    select u.id, u.nombre, u.email, u.rol, u.saldo
+    select u.id, u.nombre::text, u.email::text, u.rol::text, u.saldo
     from usuarios u
     where u.email = p_email
       and u.contrasenia = crypt(p_password, u.contrasenia);
@@ -86,7 +89,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  select u.id, u.nombre, u.email, u.rol, u.saldo
+  select u.id, u.nombre::text, u.email::text, u.rol::text, u.saldo
   from usuarios u
   where u.id = p_usuario_id;
 $$;
