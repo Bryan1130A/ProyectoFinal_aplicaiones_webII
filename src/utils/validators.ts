@@ -6,9 +6,22 @@ export function validateEmail(email: string): string | null {
   return null;
 }
 
+// Supabase Auth exige 6 caracteres como mínimo por defecto.
 export function validatePassword(password: string): string | null {
   if (!password) return 'La contraseña es obligatoria';
-  if (password.length < 4) return 'La contraseña es demasiado corta';
+  if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres';
+  return null;
+}
+
+export function validateConfirmPassword(password: string, confirmPassword: string): string | null {
+  if (!confirmPassword) return 'Confirma tu contraseña';
+  if (password !== confirmPassword) return 'Las contraseñas no coinciden';
+  return null;
+}
+
+export function validateName(name: string): string | null {
+  if (!name.trim()) return 'El nombre es obligatorio';
+  if (name.trim().length < 2) return 'El nombre es demasiado corto';
   return null;
 }
 

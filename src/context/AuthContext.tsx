@@ -1,16 +1,16 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
-import type { LoginRequest } from '../types/Auth';
+import type { LoginRequest, RegisterRequest, RegisterResult } from '../types/Auth';
 import type { User } from '../types/User';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
-import { setUnauthorizedHandler } from '../services/api';
-import { saveUser, getUser } from '../utils/storage';
+import { supabase } from '../services/supabaseClient';
 
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   isInitializing: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<RegisterResult>;
   logout: () => Promise<void>;
 }
 
@@ -21,52 +21,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  const logout = useCallback(async () => {
-    await authService.logout();
-    setUser(null);
-    setIsAuthenticated(false);
-  }, []);
-
-  useEffect(() => {
-    setUnauthorizedHandler(() => {
+  const syncUser = useCallback(async (hasSession: boolean) => {
+    if (!hasSession) {
       setUser(null);
       setIsAuthenticated(false);
-    });
+      return;
+    }
+    const currentUser = await userService.getCurrentUser();
+    setUser(currentUser);
+    setIsAuthenticated(!!currentUser);
   }, []);
 
   useEffect(() => {
     (async () => {
-      const alreadyAuthenticated = await authService.isAuthenticated();
-      if (alreadyAuthenticated) {
-        const storedUser = await getUser();
-        setUser(storedUser);
-        setIsAuthenticated(true);
-      }
+      const { data } = await supabase.auth.getSession();
+      await syncUser(!!data.session);
       setIsInitializing(false);
     })();
-  }, []);
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncUser(!!session);
+    });
+
+    return () => subscription.subscription.unsubscribe();
+  }, [syncUser]);
 
   const login = useCallback(async (credentials: LoginRequest) => {
-    const response = await authService.login(credentials);
-    let resolvedUser: User = {
-      email: response.email ?? credentials.email,
-      nombre: response.nombre,
-      rol: response.rol,
-    };
+    await authService.login(credentials);
+  }, []);
 
-    const remoteUser = await userService.getCurrentUser();
-    if (remoteUser) {
-      resolvedUser = remoteUser;
-    }
+  const register = useCallback(async (data: RegisterRequest) => {
+    return authService.register(data);
+  }, []);
 
-    await saveUser(resolvedUser);
-    setUser(resolvedUser);
-    setIsAuthenticated(true);
+  const logout = useCallback(async () => {
+    await authService.logout();
   }, []);
 
   const value = useMemo(
-    () => ({ user, isAuthenticated, isInitializing, login, logout }),
-    [user, isAuthenticated, isInitializing, login, logout]
+    () => ({ user, isAuthenticated, isInitializing, login, register, logout }),
+    [user, isAuthenticated, isInitializing, login, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

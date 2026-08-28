@@ -1,35 +1,30 @@
-import { AxiosError } from 'axios';
+const KNOWN_MESSAGES: Array<{ match: string; friendly: string }> = [
+  { match: 'Invalid login credentials', friendly: 'Correo o contraseña incorrectos.' },
+  { match: 'User already registered', friendly: 'Ya existe una cuenta con este correo.' },
+  {
+    match: 'Email not confirmed',
+    friendly: 'Debes confirmar tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.',
+  },
+  { match: 'Password should be at least', friendly: 'La contraseña es demasiado corta.' },
+  { match: 'JWT expired', friendly: 'Tu sesión expiró. Inicia sesión de nuevo.' },
+  { match: 'row-level security', friendly: 'No tienes permisos para realizar esta acción.' },
+];
 
 /**
- * Traduce errores de red/HTTP a mensajes comprensibles para el usuario final,
- * sin exponer detalles técnicos como respuesta principal.
+ * Traduce errores de Supabase (Auth/Postgrest) y de red a mensajes
+ * comprensibles para el usuario final, sin exponer detalles técnicos.
  */
 export function getErrorMessage(error: unknown): string {
-  if (error instanceof AxiosError) {
-    if (!error.response) {
-      return 'No se pudo conectar con el servidor. Verifica tu conexión y que el backend esté encendido.';
-    }
+  const message = error instanceof Error ? error.message : String(error);
 
-    const status = error.response.status;
-    const backendMessage =
-      (error.response.data as { message?: string; error?: string } | undefined)?.message ??
-      (error.response.data as { message?: string; error?: string } | undefined)?.error;
+  if (!message) return 'Ocurrió un error inesperado.';
 
-    switch (status) {
-      case 400:
-        return backendMessage ?? 'Los datos enviados no son válidos.';
-      case 401:
-        return 'Credenciales incorrectas o sesión expirada.';
-      case 403:
-        return 'No tienes permisos para realizar esta acción.';
-      case 404:
-        return 'No se encontró la información solicitada.';
-      case 500:
-        return 'Ocurrió un error en el servidor. Intenta de nuevo más tarde.';
-      default:
-        return backendMessage ?? 'Ocurrió un error inesperado.';
-    }
+  if (/network request failed|fetch failed|failed to fetch/i.test(message)) {
+    return 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
   }
 
-  return 'Ocurrió un error inesperado.';
+  const known = KNOWN_MESSAGES.find((entry) => message.includes(entry.match));
+  if (known) return known.friendly;
+
+  return message;
 }

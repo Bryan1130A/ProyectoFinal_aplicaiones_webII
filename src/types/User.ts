@@ -1,9 +1,5 @@
 export interface User {
+  id: string;
   email: string;
   nombre?: string;
-  rol: string;
-}
-
-export interface Balance {
-  saldo: number;
 }

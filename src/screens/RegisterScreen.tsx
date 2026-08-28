@@ -1,6 +1,7 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,31 +16,52 @@ import { useAuth } from '../context/AuthContext';
 import { colors, spacing, typography } from '../theme/theme';
 import type { AuthStackParamList } from '../navigation/types';
 import { getErrorMessage } from '../utils/errorHandler';
-import { validateEmail, validatePassword } from '../utils/validators';
+import {
+  validateConfirmPassword,
+  validateEmail,
+  validateName,
+  validatePassword,
+} from '../utils/validators';
 
-type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
+type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
-export function LoginScreen({ navigation }: Props) {
-  const { login } = useAuth();
+export function RegisterScreen({ navigation }: Props) {
+  const { register } = useAuth();
+  const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [emailError, setEmailError] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [errors, setErrors] = useState<{
+    nombre?: string | null;
+    email?: string | null;
+    password?: string | null;
+    confirmPassword?: string | null;
+  }>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit() {
-    const emailValidation = validateEmail(email);
-    const passwordValidation = validatePassword(password);
-    setEmailError(emailValidation);
-    setPasswordError(passwordValidation);
+    const nombreError = validateName(nombre);
+    const emailError = validateEmail(email);
+    const passwordError = validatePassword(password);
+    const confirmError = validateConfirmPassword(password, confirmPassword);
+    setErrors({ nombre: nombreError, email: emailError, password: passwordError, confirmPassword: confirmError });
     setServerError(null);
 
-    if (emailValidation || passwordValidation) return;
+    if (nombreError || emailError || passwordError || confirmError) return;
 
     setIsLoading(true);
     try {
-      await login({ email: email.trim(), password });
+      const result = await register({ nombre: nombre.trim(), email: email.trim(), password });
+      if (result.needsEmailConfirmation) {
+        Alert.alert(
+          'Confirma tu correo',
+          'Te enviamos un enlace de confirmación. Ábrelo y luego inicia sesión.',
+          [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+        );
+      }
+      // Si no requiere confirmación, la sesión queda activa automáticamente
+      // y AuthContext navega solo al área privada.
     } catch (error) {
       setServerError(getErrorMessage(error));
     } finally {
@@ -48,15 +70,12 @@ export function LoginScreen({ navigation }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.logo}>🏦</Text>
-          <Text style={styles.title}>Banco Autónoma</Text>
-          <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
+          <Text style={styles.title}>Crear cuenta</Text>
+          <Text style={styles.subtitle}>Regístrate para empezar a usar tu banco</Text>
         </View>
 
         {serverError ? (
@@ -66,10 +85,19 @@ export function LoginScreen({ navigation }: Props) {
         ) : null}
 
         <FormInput
+          label="Nombre completo"
+          value={nombre}
+          onChangeText={setNombre}
+          error={errors.nombre}
+          placeholder="Juan Pérez"
+          editable={!isLoading}
+        />
+
+        <FormInput
           label="Correo electrónico"
           value={email}
           onChangeText={setEmail}
-          error={emailError}
+          error={errors.email}
           placeholder="usuario@email.com"
           autoCapitalize="none"
           keyboardType="email-address"
@@ -80,16 +108,26 @@ export function LoginScreen({ navigation }: Props) {
           label="Contraseña"
           value={password}
           onChangeText={setPassword}
-          error={passwordError}
+          error={errors.password}
           placeholder="••••••••"
           secureTextEntry
           editable={!isLoading}
         />
 
-        <PrimaryButton label="Iniciar sesión" onPress={handleSubmit} loading={isLoading} />
+        <FormInput
+          label="Confirmar contraseña"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          error={errors.confirmPassword}
+          placeholder="••••••••"
+          secureTextEntry
+          editable={!isLoading}
+        />
 
-        <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
+        <PrimaryButton label="Registrarme" onPress={handleSubmit} loading={isLoading} />
+
+        <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.linkText}>¿Ya tienes cuenta? Inicia sesión</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -119,6 +157,7 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+    textAlign: 'center',
   },
   errorBanner: {
     backgroundColor: colors.dangerLight,

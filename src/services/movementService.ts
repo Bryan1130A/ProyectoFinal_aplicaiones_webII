@@ -1,29 +1,51 @@
-import { ENDPOINTS } from '../config/api.config';
 import type { CreateMovementRequest, Movement, UpdateMovementRequest } from '../types/Movement';
-import { api } from './api';
+import { supabase } from './supabaseClient';
+
+const MOVEMENT_COLUMNS = 'id, tipo, monto, descripcion, fecha';
 
 async function getMovements(): Promise<Movement[]> {
-  const { data } = await api.get<Movement[]>(ENDPOINTS.movements);
-  return data;
+  const { data, error } = await supabase
+    .from('movimientos')
+    .select(MOVEMENT_COLUMNS)
+    .order('fecha', { ascending: false });
+  if (error) throw error;
+  return data as Movement[];
 }
 
 async function getMovementById(id: number): Promise<Movement> {
-  const { data } = await api.get<Movement>(ENDPOINTS.movementById(id));
-  return data;
+  const { data, error } = await supabase
+    .from('movimientos')
+    .select(MOVEMENT_COLUMNS)
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data as Movement;
 }
 
 async function createMovement(payload: CreateMovementRequest): Promise<Movement> {
-  const { data } = await api.post<Movement>(ENDPOINTS.movements, payload);
-  return data;
+  const { data, error } = await supabase
+    .from('movimientos')
+    .insert(payload)
+    .select(MOVEMENT_COLUMNS)
+    .single();
+  if (error) throw error;
+  return data as Movement;
 }
 
 async function updateMovement(id: number, payload: UpdateMovementRequest): Promise<Movement> {
-  const { data } = await api.put<Movement>(ENDPOINTS.movementById(id), payload);
-  return data;
+  const { data, error } = await supabase
+    .from('movimientos')
+    .update(payload)
+    .eq('id', id)
+    .select(MOVEMENT_COLUMNS)
+    .single();
+  if (error) throw error;
+  return data as Movement;
 }
 
 async function deleteMovement(id: number): Promise<void> {
-  await api.delete(ENDPOINTS.movementById(id));
+  const { error } = await supabase.from('movimientos').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export const movementService = {
