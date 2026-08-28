@@ -32,9 +32,27 @@ export function validateMovementType(tipo: string): string | null {
 export function validateAmount(amount: string): string | null {
   if (!amount.trim()) return 'El monto es obligatorio';
   const normalized = amount.replace(',', '.');
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized.trim())) {
+    return 'Usa un monto válido, con máximo 2 decimales';
+  }
   const value = Number(normalized);
-  if (Number.isNaN(value)) return 'El monto debe ser un número válido';
   if (value <= 0) return 'El monto debe ser mayor que cero';
+  return null;
+}
+
+function formatMoney(amount: number): string {
+  return `$${amount.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Solo aplica a RETIRO: evita que el usuario intente sacar más de lo que
+ * tiene disponible, con el mismo mensaje que después confirmaría el
+ * servidor (crear_movimiento / editar_movimiento en supabase/schema.sql).
+ */
+export function validateSufficientBalance(monto: number, disponible: number): string | null {
+  if (monto > disponible) {
+    return `Saldo insuficiente. Disponible: ${formatMoney(disponible)}`;
+  }
   return null;
 }
 

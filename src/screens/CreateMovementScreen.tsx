@@ -9,7 +9,16 @@ import { colors, radius, spacing, typography } from '../theme/theme';
 import type { AppStackParamList } from '../navigation/types';
 import type { MovementType } from '../types/Movement';
 import { getErrorMessage } from '../utils/errorHandler';
-import { validateAmount, validateDescription, validateMovementType } from '../utils/validators';
+import {
+  validateAmount,
+  validateDescription,
+  validateMovementType,
+  validateSufficientBalance,
+} from '../utils/validators';
+
+function formatMoney(amount: number): string {
+  return `$${amount.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 type Props = NativeStackScreenProps<AppStackParamList, 'CreateMovement'>;
 
@@ -24,8 +33,14 @@ export function CreateMovementScreen({ navigation }: Props) {
 
   async function handleSubmit() {
     const tipoError = validateMovementType(tipo);
-    const montoError = validateAmount(monto);
+    let montoError = validateAmount(monto);
     const descripcionError = validateDescription(descripcion);
+    const montoValue = Number(monto.replace(',', '.'));
+
+    if (!montoError && tipo === 'RETIRO' && user) {
+      montoError = validateSufficientBalance(montoValue, user.saldo);
+    }
+
     setErrors({ tipo: tipoError, monto: montoError, descripcion: descripcionError });
     setServerError(null);
 
@@ -35,7 +50,7 @@ export function CreateMovementScreen({ navigation }: Props) {
     try {
       await movementService.createMovement(user.id, {
         tipo: tipo as MovementType,
-        monto: Number(monto.replace(',', '.')),
+        monto: montoValue,
         descripcion: descripcion.trim(),
       });
       Alert.alert('Movimiento registrado', 'El movimiento se registró correctamente.', [
@@ -50,6 +65,11 @@ export function CreateMovementScreen({ navigation }: Props) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.balanceBanner}>
+        <Text style={styles.balanceLabel}>Saldo disponible</Text>
+        <Text style={styles.balanceValue}>{formatMoney(user?.saldo ?? 0)}</Text>
+      </View>
+
       <Text style={styles.label}>Tipo de movimiento</Text>
       <View style={styles.typeRow}>
         <TouchableOpacity
@@ -107,6 +127,21 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
+  },
+  balanceBanner: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  balanceLabel: {
+    ...typography.caption,
+    color: colors.primaryDark,
+  },
+  balanceValue: {
+    ...typography.subtitle,
+    color: colors.primaryDark,
+    marginTop: 2,
   },
   label: {
     ...typography.body,

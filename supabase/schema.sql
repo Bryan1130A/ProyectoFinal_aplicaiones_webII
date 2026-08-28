@@ -148,7 +148,7 @@ begin
     raise exception 'Usuario no encontrado';
   end if;
   if p_tipo = 'RETIRO' and v_saldo_actual < p_monto then
-    raise exception 'Saldo insuficiente';
+    raise exception 'Saldo insuficiente. Disponible: $%', to_char(v_saldo_actual, 'FM999999990.00');
   end if;
 
   insert into movimientos (descripcion, fecha, monto, tipo, id_usuario)
@@ -203,7 +203,7 @@ begin
     (case when v_old.tipo = 'DEPOSITO' then v_old.monto else -v_old.monto end);
 
   if p_tipo = 'RETIRO' and v_saldo_sin_movimiento < p_monto then
-    raise exception 'Saldo insuficiente';
+    raise exception 'Saldo insuficiente. Disponible: $%', to_char(v_saldo_sin_movimiento, 'FM999999990.00');
   end if;
 
   update movimientos

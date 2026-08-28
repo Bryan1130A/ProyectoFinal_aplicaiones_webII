@@ -9,10 +9,20 @@ import { movementService } from '../services/movementService';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import type { AppStackParamList } from '../navigation/types';
 import type { MovementType } from '../types/Movement';
+import type { Movement } from '../types/Movement';
 import { getErrorMessage } from '../utils/errorHandler';
-import { validateAmount, validateDescription, validateMovementType } from '../utils/validators';
+import {
+  validateAmount,
+  validateDescription,
+  validateMovementType,
+  validateSufficientBalance,
+} from '../utils/validators';
 
 type Props = NativeStackScreenProps<AppStackParamList, 'EditMovement'>;
+
+function formatMoney(amount: number): string {
+  return `$${amount.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 export function EditMovementScreen({ navigation, route }: Props) {
   const { movementId } = route.params;
@@ -21,6 +31,7 @@ export function EditMovementScreen({ navigation, route }: Props) {
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [originalMovement, setOriginalMovement] = useState<Movement | null>(null);
   const [tipo, setTipo] = useState<MovementType | ''>('');
   const [monto, setMonto] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -33,6 +44,7 @@ export function EditMovementScreen({ navigation, route }: Props) {
     (async () => {
       try {
         const movement = await movementService.getMovementById(movementId, userId);
+        setOriginalMovement(movement);
         setTipo(movement.tipo);
         setMonto(String(movement.monto));
         setDescripcion(movement.descripcion);
@@ -44,10 +56,23 @@ export function EditMovementScreen({ navigation, route }: Props) {
     })();
   }, [movementId, userId]);
 
+  // Saldo disponible si se deshace el efecto del movimiento original,
+  // igual que calcula editar_movimiento en el servidor.
+  const saldoSinEsteMovimiento =
+    user && originalMovement
+      ? user.saldo - (originalMovement.tipo === 'DEPOSITO' ? originalMovement.monto : -originalMovement.monto)
+      : 0;
+
   async function handleSubmit() {
     const tipoError = validateMovementType(tipo);
-    const montoError = validateAmount(monto);
+    let montoError = validateAmount(monto);
     const descripcionError = validateDescription(descripcion);
+    const montoValue = Number(monto.replace(',', '.'));
+
+    if (!montoError && tipo === 'RETIRO') {
+      montoError = validateSufficientBalance(montoValue, saldoSinEsteMovimiento);
+    }
+
     setErrors({ tipo: tipoError, monto: montoError, descripcion: descripcionError });
     setServerError(null);
 
@@ -57,7 +82,7 @@ export function EditMovementScreen({ navigation, route }: Props) {
     try {
       await movementService.updateMovement(movementId, userId, {
         tipo: tipo as MovementType,
-        monto: Number(monto.replace(',', '.')),
+        monto: montoValue,
         descripcion: descripcion.trim(),
       });
       Alert.alert('Movimiento actualizado', 'Los cambios se guardaron correctamente.', [
@@ -84,6 +109,11 @@ export function EditMovementScreen({ navigation, route }: Props) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.balanceBanner}>
+        <Text style={styles.balanceLabel}>Saldo disponible</Text>
+        <Text style={styles.balanceValue}>{formatMoney(saldoSinEsteMovimiento)}</Text>
+      </View>
+
       <Text style={styles.label}>Tipo de movimiento</Text>
       <View style={styles.typeRow}>
         <TouchableOpacity
@@ -141,6 +171,21 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
+  },
+  balanceBanner: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  balanceLabel: {
+    ...typography.caption,
+    color: colors.primaryDark,
+  },
+  balanceValue: {
+    ...typography.subtitle,
+    color: colors.primaryDark,
+    marginTop: 2,
   },
   label: {
     ...typography.body,
