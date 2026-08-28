@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FormInput } from '../components/FormInput';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { useAuth } from '../context/AuthContext';
 import { movementService } from '../services/movementService';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import type { AppStackParamList } from '../navigation/types';
@@ -13,6 +14,7 @@ import { validateAmount, validateDescription, validateMovementType } from '../ut
 type Props = NativeStackScreenProps<AppStackParamList, 'CreateMovement'>;
 
 export function CreateMovementScreen({ navigation }: Props) {
+  const { user } = useAuth();
   const [tipo, setTipo] = useState<MovementType | ''>('');
   const [monto, setMonto] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -27,11 +29,11 @@ export function CreateMovementScreen({ navigation }: Props) {
     setErrors({ tipo: tipoError, monto: montoError, descripcion: descripcionError });
     setServerError(null);
 
-    if (tipoError || montoError || descripcionError) return;
+    if (tipoError || montoError || descripcionError || !user) return;
 
     setIsSubmitting(true);
     try {
-      await movementService.createMovement({
+      await movementService.createMovement(user.id, {
         tipo: tipo as MovementType,
         monto: Number(monto.replace(',', '.')),
         descripcion: descripcion.trim(),

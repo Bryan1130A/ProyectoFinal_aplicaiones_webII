@@ -22,31 +22,36 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Home'>;
 const RECENT_MOVEMENTS_LIMIT = 5;
 
 export function HomeScreen({ navigation }: Props) {
-  const { user, logout } = useAuth();
-  const [balance, setBalance] = useState(0);
+  const { user, logout, refreshUser } = useAuth();
   const [movements, setMovements] = useState<Movement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setIsRefreshing(true);
-    else setIsLoading(true);
-    setError(null);
-    try {
-      const [balanceData, movementsData] = await Promise.all([
-        userService.getBalance(),
-        movementService.getMovements(),
-      ]);
-      setBalance(balanceData);
-      setMovements(movementsData);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
+  const userId = user?.id;
+
+  const loadData = useCallback(
+    async (isRefresh = false) => {
+      if (!userId) return;
+      if (isRefresh) setIsRefreshing(true);
+      else setIsLoading(true);
+      setError(null);
+      try {
+        const [freshUser, movementsData] = await Promise.all([
+          userService.getUser(userId),
+          movementService.getMovements(userId),
+        ]);
+        if (freshUser) refreshUser(freshUser);
+        setMovements(movementsData);
+      } catch (err) {
+        setError(getErrorMessage(err));
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [userId, refreshUser]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -85,7 +90,7 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         ) : null}
 
-        <BalanceCard label="Saldo disponible" amount={balance} size="large" />
+        <BalanceCard label="Saldo disponible" amount={user?.saldo ?? 0} size="large" />
 
         <View style={styles.tilesRow}>
           <BalanceCard label="Depósitos" amount={totalDeposits} size="small" tone="success" />

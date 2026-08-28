@@ -4,6 +4,7 @@ import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { FormInput } from '../components/FormInput';
 import { Loading } from '../components/Loading';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { useAuth } from '../context/AuthContext';
 import { movementService } from '../services/movementService';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import type { AppStackParamList } from '../navigation/types';
@@ -15,6 +16,8 @@ type Props = NativeStackScreenProps<AppStackParamList, 'EditMovement'>;
 
 export function EditMovementScreen({ navigation, route }: Props) {
   const { movementId } = route.params;
+  const { user } = useAuth();
+  const userId = user?.id;
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -26,9 +29,10 @@ export function EditMovementScreen({ navigation, route }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!userId) return;
     (async () => {
       try {
-        const movement = await movementService.getMovementById(movementId);
+        const movement = await movementService.getMovementById(movementId, userId);
         setTipo(movement.tipo);
         setMonto(String(movement.monto));
         setDescripcion(movement.descripcion);
@@ -38,7 +42,7 @@ export function EditMovementScreen({ navigation, route }: Props) {
         setIsLoading(false);
       }
     })();
-  }, [movementId]);
+  }, [movementId, userId]);
 
   async function handleSubmit() {
     const tipoError = validateMovementType(tipo);
@@ -47,11 +51,11 @@ export function EditMovementScreen({ navigation, route }: Props) {
     setErrors({ tipo: tipoError, monto: montoError, descripcion: descripcionError });
     setServerError(null);
 
-    if (tipoError || montoError || descripcionError) return;
+    if (tipoError || montoError || descripcionError || !userId) return;
 
     setIsSubmitting(true);
     try {
-      await movementService.updateMovement(movementId, {
+      await movementService.updateMovement(movementId, userId, {
         tipo: tipo as MovementType,
         monto: Number(monto.replace(',', '.')),
         descripcion: descripcion.trim(),

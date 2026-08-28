@@ -1,53 +1,266 @@
--- Esquema de la app móvil bancaria.
--- Ejecutar completo en: Supabase Dashboard > SQL Editor > New query > Run.
--- La autenticación (usuarios, contraseñas, JWT) la maneja Supabase Auth
--- automáticamente; aquí solo se crea la tabla de movimientos y la función
--- de saldo.
+-- Esquema adaptado a la base de datos real del proyecto (tablas usuarios /
+-- movimientos, definidas por el equipo de backend). Ejecutar completo en:
+-- Supabase Dashboard > SQL Editor > New query > Run.
+--
+-- Esta base NO usa Supabase Auth (usuarios.id es int8, no uuid: es un login
+-- 100% propio contra la tabla `usuarios`). Por eso TODO el acceso desde la
+-- app pasa por funciones (RPC) con SECURITY DEFINER:
+--   - Las tablas quedan con Row Level Security activado y SIN políticas,
+--     así nadie puede leer/escribir la tabla directo con la anon key.
+--   - Las funciones sí pueden (corren con privilegios del dueño), y son la
+--     única puerta de entrada: login_usuario, registrar_usuario,
+--     obtener_movimientos, crear_movimiento, editar_movimiento,
+--     eliminar_movimiento, obtener_usuario.
+--   - La contraseña se guarda con hash (pgcrypto) y se verifica en el
+--     servidor; nunca se compara en texto plano desde el móvil.
+--
+-- Si `usuarios.contrasenia` ya tiene datos en texto plano, hay que
+-- rehashearlos antes de usar login_usuario (ver el bloque comentado al
+-- final de este archivo).
 
-create table if not exists public.movimientos (
-  id bigint generated always as identity primary key,
-  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
-  tipo text not null check (tipo in ('DEPOSITO', 'RETIRO')),
-  monto numeric(12, 2) not null check (monto > 0),
-  descripcion text not null,
-  fecha timestamptz not null default now()
-);
+create extension if not exists pgcrypto;
 
-create index if not exists movimientos_user_id_idx on public.movimientos (user_id);
-
--- Row Level Security: cada usuario solo puede ver/crear/editar/eliminar
--- SUS PROPIOS movimientos. Sin esto, cualquier usuario autenticado podría
--- leer los movimientos de todos los demás.
+alter table public.usuarios enable row level security;
 alter table public.movimientos enable row level security;
+-- Sin "create policy": por defecto, RLS deniega todo acceso directo desde
+-- PostgREST (anon/authenticated). Solo las funciones de abajo pueden pasar.
 
-create policy "Los usuarios ven sus propios movimientos"
-  on public.movimientos for select
-  using (auth.uid() = user_id);
+-- ============================================================
+-- Registro
+-- ============================================================
+create or replace function public.registrar_usuario(
+  p_nombre text,
+  p_email text,
+  p_password text
+)
+returns table (id bigint, nombre text, email text, rol text, saldo double precision)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id bigint;
+begin
+  if exists (select 1 from usuarios u where u.email = p_email) then
+    raise exception 'Ya existe una cuenta con este correo';
+  end if;
 
-create policy "Los usuarios crean sus propios movimientos"
-  on public.movimientos for insert
-  with check (auth.uid() = user_id);
+  insert into usuarios (nombre, email, contrasenia, rol, saldo)
+  values (p_nombre, p_email, crypt(p_password, gen_salt('bf')), 'CLIENTE', 0)
+  returning usuarios.id into v_id;
 
-create policy "Los usuarios actualizan sus propios movimientos"
-  on public.movimientos for update
-  using (auth.uid() = user_id);
+  return query
+    select u.id, u.nombre, u.email, u.rol, u.saldo
+    from usuarios u
+    where u.id = v_id;
+end;
+$$;
 
-create policy "Los usuarios eliminan sus propios movimientos"
-  on public.movimientos for delete
-  using (auth.uid() = user_id);
+-- ============================================================
+-- Login
+-- ============================================================
+create or replace function public.login_usuario(
+  p_email text,
+  p_password text
+)
+returns table (id bigint, nombre text, email text, rol text, saldo double precision)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+    select u.id, u.nombre, u.email, u.rol, u.saldo
+    from usuarios u
+    where u.email = p_email
+      and u.contrasenia = crypt(p_password, u.contrasenia);
+end;
+$$;
 
--- Saldo calculado en el servidor (Postgres), nunca de forma independiente
--- en el móvil: depósitos suman, retiros restan, solo del usuario autenticado.
-create or replace function public.get_saldo()
-returns numeric
+-- ============================================================
+-- Perfil / saldo actual (para refrescar Home tras cada operación)
+-- ============================================================
+create or replace function public.obtener_usuario(p_usuario_id bigint)
+returns table (id bigint, nombre text, email text, rol text, saldo double precision)
 language sql
 security definer
 set search_path = public
 as $$
-  select coalesce(
-    sum(case when tipo = 'DEPOSITO' then monto else -monto end),
-    0
-  )
-  from public.movimientos
-  where user_id = auth.uid();
+  select u.id, u.nombre, u.email, u.rol, u.saldo
+  from usuarios u
+  where u.id = p_usuario_id;
 $$;
+
+-- ============================================================
+-- Movimientos
+-- ============================================================
+create or replace function public.obtener_movimientos(p_usuario_id bigint)
+returns setof movimientos
+language sql
+security definer
+set search_path = public
+as $$
+  select *
+  from movimientos
+  where id_usuario = p_usuario_id
+  order by fecha desc, id desc;
+$$;
+
+create or replace function public.obtener_movimiento(p_movimiento_id bigint, p_usuario_id bigint)
+returns movimientos
+language sql
+security definer
+set search_path = public
+as $$
+  select *
+  from movimientos
+  where id = p_movimiento_id
+    and id_usuario = p_usuario_id;
+$$;
+
+create or replace function public.crear_movimiento(
+  p_usuario_id bigint,
+  p_tipo text,
+  p_monto numeric,
+  p_descripcion text
+)
+returns movimientos
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_mov movimientos;
+  v_saldo_actual double precision;
+begin
+  if p_tipo not in ('DEPOSITO', 'RETIRO') then
+    raise exception 'Tipo de movimiento inválido';
+  end if;
+  if p_monto <= 0 then
+    raise exception 'El monto debe ser mayor que cero';
+  end if;
+
+  select saldo into v_saldo_actual from usuarios where id = p_usuario_id;
+  if v_saldo_actual is null then
+    raise exception 'Usuario no encontrado';
+  end if;
+  if p_tipo = 'RETIRO' and v_saldo_actual < p_monto then
+    raise exception 'Saldo insuficiente';
+  end if;
+
+  insert into movimientos (descripcion, fecha, monto, tipo, id_usuario)
+  values (p_descripcion, current_date, p_monto, p_tipo, p_usuario_id)
+  returning * into v_mov;
+
+  update usuarios
+  set saldo = saldo + (case when p_tipo = 'DEPOSITO' then p_monto else -p_monto end)
+  where id = p_usuario_id;
+
+  return v_mov;
+end;
+$$;
+
+create or replace function public.editar_movimiento(
+  p_movimiento_id bigint,
+  p_usuario_id bigint,
+  p_tipo text,
+  p_monto numeric,
+  p_descripcion text
+)
+returns movimientos
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_old movimientos;
+  v_new movimientos;
+  v_saldo_actual double precision;
+  v_saldo_sin_movimiento double precision;
+begin
+  if p_tipo not in ('DEPOSITO', 'RETIRO') then
+    raise exception 'Tipo de movimiento inválido';
+  end if;
+  if p_monto <= 0 then
+    raise exception 'El monto debe ser mayor que cero';
+  end if;
+
+  select * into v_old
+  from movimientos
+  where id = p_movimiento_id and id_usuario = p_usuario_id;
+
+  if v_old.id is null then
+    raise exception 'Movimiento no encontrado';
+  end if;
+
+  select saldo into v_saldo_actual from usuarios where id = p_usuario_id;
+
+  -- Saldo si se deshace el efecto del movimiento original.
+  v_saldo_sin_movimiento := v_saldo_actual -
+    (case when v_old.tipo = 'DEPOSITO' then v_old.monto else -v_old.monto end);
+
+  if p_tipo = 'RETIRO' and v_saldo_sin_movimiento < p_monto then
+    raise exception 'Saldo insuficiente';
+  end if;
+
+  update movimientos
+  set tipo = p_tipo, monto = p_monto, descripcion = p_descripcion
+  where id = p_movimiento_id
+  returning * into v_new;
+
+  update usuarios
+  set saldo = v_saldo_sin_movimiento + (case when p_tipo = 'DEPOSITO' then p_monto else -p_monto end)
+  where id = p_usuario_id;
+
+  return v_new;
+end;
+$$;
+
+create or replace function public.eliminar_movimiento(
+  p_movimiento_id bigint,
+  p_usuario_id bigint
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_old movimientos;
+begin
+  select * into v_old
+  from movimientos
+  where id = p_movimiento_id and id_usuario = p_usuario_id;
+
+  if v_old.id is null then
+    raise exception 'Movimiento no encontrado';
+  end if;
+
+  delete from movimientos where id = p_movimiento_id;
+
+  update usuarios
+  set saldo = saldo - (case when v_old.tipo = 'DEPOSITO' then v_old.monto else -v_old.monto end)
+  where id = p_usuario_id;
+end;
+$$;
+
+-- ============================================================
+-- Permisos: la anon key solo puede EJECUTAR estas funciones,
+-- nunca leer/escribir las tablas directamente (RLS sin políticas lo impide).
+-- ============================================================
+grant execute on function
+  public.registrar_usuario(text, text, text),
+  public.login_usuario(text, text),
+  public.obtener_usuario(bigint),
+  public.obtener_movimientos(bigint),
+  public.obtener_movimiento(bigint, bigint),
+  public.crear_movimiento(bigint, text, numeric, text),
+  public.editar_movimiento(bigint, bigint, text, numeric, text),
+  public.eliminar_movimiento(bigint, bigint)
+to anon, authenticated;
+
+-- ============================================================
+-- SOLO SI `usuarios.contrasenia` ya tiene valores en texto plano:
+-- ejecutar UNA vez para rehashearlos, luego borrar/ignorar este bloque.
+-- ============================================================
+-- update usuarios set contrasenia = crypt(contrasenia, gen_salt('bf'));

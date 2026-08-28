@@ -6,6 +6,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Loading } from '../components/Loading';
 import { MovementCard } from '../components/MovementCard';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { useAuth } from '../context/AuthContext';
 import { movementService } from '../services/movementService';
 import { colors, spacing } from '../theme/theme';
 import type { AppStackParamList } from '../navigation/types';
@@ -15,25 +16,31 @@ import { getErrorMessage } from '../utils/errorHandler';
 type Props = NativeStackScreenProps<AppStackParamList, 'Movements'>;
 
 export function MovementsScreen({ navigation }: Props) {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [movements, setMovements] = useState<Movement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadMovements = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setIsRefreshing(true);
-    else setIsLoading(true);
-    setError(null);
-    try {
-      const data = await movementService.getMovements();
-      setMovements(data);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
+  const loadMovements = useCallback(
+    async (isRefresh = false) => {
+      if (!userId) return;
+      if (isRefresh) setIsRefreshing(true);
+      else setIsLoading(true);
+      setError(null);
+      try {
+        const data = await movementService.getMovements(userId);
+        setMovements(data);
+      } catch (err) {
+        setError(getErrorMessage(err));
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [userId]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -53,8 +60,9 @@ export function MovementsScreen({ navigation }: Props) {
   }
 
   async function handleDelete(movement: Movement) {
+    if (!userId) return;
     try {
-      await movementService.deleteMovement(movement.id);
+      await movementService.deleteMovement(movement.id, userId);
       await loadMovements();
     } catch (err) {
       Alert.alert('No se pudo eliminar', getErrorMessage(err));

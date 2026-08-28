@@ -1,66 +1,54 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
-import type { LoginRequest, RegisterRequest, RegisterResult } from '../types/Auth';
+import type { LoginRequest, RegisterRequest } from '../types/Auth';
 import type { User } from '../types/User';
 import { authService } from '../services/authService';
-import { userService } from '../services/userService';
-import { supabase } from '../services/supabaseClient';
 
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   isInitializing: boolean;
   login: (credentials: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<RegisterResult>;
+  register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
-
-  const syncUser = useCallback(async (hasSession: boolean) => {
-    if (!hasSession) {
-      setUser(null);
-      setIsAuthenticated(false);
-      return;
-    }
-    const currentUser = await userService.getCurrentUser();
-    setUser(currentUser);
-    setIsAuthenticated(!!currentUser);
-  }, []);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      await syncUser(!!data.session);
+      const storedUser = await authService.getSessionUser();
+      setUser(storedUser);
       setIsInitializing(false);
     })();
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncUser(!!session);
-    });
-
-    return () => subscription.subscription.unsubscribe();
-  }, [syncUser]);
+  }, []);
 
   const login = useCallback(async (credentials: LoginRequest) => {
-    await authService.login(credentials);
+    const loggedInUser = await authService.login(credentials);
+    setUser(loggedInUser);
   }, []);
 
   const register = useCallback(async (data: RegisterRequest) => {
-    return authService.register(data);
+    const newUser = await authService.register(data);
+    setUser(newUser);
   }, []);
 
   const logout = useCallback(async () => {
     await authService.logout();
+    setUser(null);
+  }, []);
+
+  const refreshUser = useCallback((updatedUser: User) => {
+    setUser(updatedUser);
   }, []);
 
   const value = useMemo(
-    () => ({ user, isAuthenticated, isInitializing, login, register, logout }),
-    [user, isAuthenticated, isInitializing, login, register, logout]
+    () => ({ user, isAuthenticated: !!user, isInitializing, login, register, logout, refreshUser }),
+    [user, isInitializing, login, register, logout, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

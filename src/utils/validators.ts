@@ -6,7 +6,6 @@ export function validateEmail(email: string): string | null {
   return null;
 }
 
-// Supabase Auth exige 6 caracteres como mínimo por defecto.
 export function validatePassword(password: string): string | null {
   if (!password) return 'La contraseña es obligatoria';
   if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres';

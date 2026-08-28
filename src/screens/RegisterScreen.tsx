@@ -1,7 +1,6 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -52,16 +51,8 @@ export function RegisterScreen({ navigation }: Props) {
 
     setIsLoading(true);
     try {
-      const result = await register({ nombre: nombre.trim(), email: email.trim(), password });
-      if (result.needsEmailConfirmation) {
-        Alert.alert(
-          'Confirma tu correo',
-          'Te enviamos un enlace de confirmación. Ábrelo y luego inicia sesión.',
-          [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-        );
-      }
-      // Si no requiere confirmación, la sesión queda activa automáticamente
-      // y AuthContext navega solo al área privada.
+      await register({ nombre: nombre.trim(), email: email.trim(), password });
+      // AuthContext ya guardó la sesión; navega solo al área privada.
     } catch (error) {
       setServerError(getErrorMessage(error));
     } finally {

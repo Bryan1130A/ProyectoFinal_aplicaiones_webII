@@ -4,6 +4,7 @@ import React, { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Loading } from '../components/Loading';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { useAuth } from '../context/AuthContext';
 import { movementService } from '../services/movementService';
 import { colors, radius, shadow, spacing, typography } from '../theme/theme';
 import type { AppStackParamList } from '../navigation/types';
@@ -16,30 +17,33 @@ function formatCurrency(amount: number): string {
   return `$${amount.toLocaleString('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function formatDateTime(fecha: string): string {
+function formatDate(fecha: string): string {
   const date = new Date(fecha);
   if (Number.isNaN(date.getTime())) return fecha;
-  return date.toLocaleString('es-EC', { dateStyle: 'long', timeStyle: 'short' });
+  return date.toLocaleDateString('es-EC', { dateStyle: 'long' });
 }
 
 export function MovementDetailScreen({ navigation, route }: Props) {
   const { movementId } = route.params;
+  const { user } = useAuth();
+  const userId = user?.id;
   const [movement, setMovement] = useState<Movement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadMovement = useCallback(async () => {
+    if (!userId) return;
     setIsLoading(true);
     setError(null);
     try {
-      const data = await movementService.getMovementById(movementId);
+      const data = await movementService.getMovementById(movementId, userId);
       setMovement(data);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
-  }, [movementId]);
+  }, [movementId, userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -55,8 +59,9 @@ export function MovementDetailScreen({ navigation, route }: Props) {
   }
 
   async function handleDelete() {
+    if (!userId) return;
     try {
-      await movementService.deleteMovement(movementId);
+      await movementService.deleteMovement(movementId, userId);
       Alert.alert('Movimiento eliminado', 'El movimiento se eliminó correctamente.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
@@ -90,7 +95,7 @@ export function MovementDetailScreen({ navigation, route }: Props) {
 
         <View style={styles.row}>
           <Text style={styles.rowLabel}>Fecha</Text>
-          <Text style={styles.rowValue}>{formatDateTime(movement.fecha)}</Text>
+          <Text style={styles.rowValue}>{formatDate(movement.fecha)}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.rowLabel}>Descripción</Text>
